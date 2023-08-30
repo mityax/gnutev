@@ -95,7 +95,7 @@ I'm open to any kind of contribution – just create an issue and/or a pull requ
 In this corporate-dominated field FOSS enthusiasts have to stick together ;)
 
 ## Disclaimer
-For my (rather simply) bookkeping, GnuTev has worked perfectly. However, I can 
+For my (rather simple) bookkeping, GnuTev has worked perfectly. However, I can 
 imagine that issues can arise in more complex scenarios (i.e. taxes). Should
 you come across any issues using GnuTev, don't hesitate to let me know so it can be
 fixed.

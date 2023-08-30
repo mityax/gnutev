@@ -5,7 +5,7 @@ import os.path
 import datetime
 import sys
 from itertools import groupby
-from typing import Iterable, List
+from typing import Iterable, List, Callable
 
 import src.datev_file as dt
 import src.gnucash_file as gc
@@ -20,7 +20,8 @@ def convert_gnucash_to_datev(gnucash_accounts_export_fd: Iterable[str],
                              skr_number: str = dt.DEFAULT_SKR_NUMBER,
                              title: str | None = None,
                              datev_output_dir: str = os.path.realpath('.'),
-                             datev_output_file_title: str | None = None):
+                             datev_output_file_title: str | None = None,
+                             print_message_function: Callable[[str], None] = lambda _: None):
     accounts_file = gc.AccountsCSVFile.load_csv_export(gnucash_accounts_export_fd)
     bookings_file = gc.BookingsCSVFile.load_csv_export(gnucash_bookings_export_fd)
 
@@ -28,6 +29,8 @@ def convert_gnucash_to_datev(gnucash_accounts_export_fd: Iterable[str],
     end_date = end_date or max(d.date for d in bookings_file.rows)
 
     periods = list(yearly_split(end_date, start_date))
+
+    print_message_function(f"Converting transactions from {start_date} to {end_date} ({len(periods)} {'period' if len(periods) == 1 else 'periods'})…")
 
     for current_period, (start, end) in enumerate(periods):  # DATEV requires one CSV file per year
         if financial_year_start and current_period == 0:  # for the first period, we respect `financial_year_start`, if it is given
@@ -43,10 +46,10 @@ def convert_gnucash_to_datev(gnucash_accounts_export_fd: Iterable[str],
             title=title or f'Buchungen {start_date.strftime("%Y-%m")} bis {end_date.strftime("%Y-%m")}',
         )
 
-        filtered_bookings = filter(  # query all bookings in the current period's year
+        filtered_bookings = tuple(filter(  # query all bookings in the current period's year
             lambda b: b.date.year == start.year,
             bookings_file.rows
-        )
+        ))
 
         for transaction_id, splits in groupby(filtered_bookings, key=lambda b: b.transaction_id):
             splits: List[gc.Booking] = list(splits)
@@ -103,7 +106,7 @@ def convert_gnucash_to_datev(gnucash_accounts_export_fd: Iterable[str],
                     additional_info_content_2=truncate_string(booking.description, 210) if len(booking.description) > 60 else None,
                 )
 
-        file_title = datev_output_file_title or title/home/x/Tools/bin/host-spawn /bin/bash
+        file_title = datev_output_file_title or title
         if file_title and len(periods) > 1:
             file_title += f"_{start.year}"
         fn = os.path.join(
@@ -114,18 +117,24 @@ def convert_gnucash_to_datev(gnucash_accounts_export_fd: Iterable[str],
         with open(fn, "w+") as f:
             datev_file.to_csv(f)
 
+        print_message_function(
+            f" - Wrote output file {current_period+1}/{len(periods)} ({start} to {end}) "
+            f"containing {len(set(b.transaction_id for b in filtered_bookings))} bookings to \"{fn}\"")
+
+    print_message_function(f"{len(periods)} DATEV-compatible {'file' if len(periods) == 1 else 'files'} successfully created.")
+
 
 if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("accounts-csv-export", help="")  # TODO write help texts
-    parser.add_argument("transactions-csv-export")
+    parser.add_argument("accounts-csv-export", help="The path to the Account Tree CSV file exported from GnuCash")
+    parser.add_argument("transactions-csv-export", help="The path to the Transactions CSV file exported from GnuCash")
 
-    parser.add_argument("--financial-year-start", default=None)
-    parser.add_argument("--output-folder", default=os.path.realpath("."))
-    parser.add_argument("--title", default=None)
+    parser.add_argument("--financial-year-start", default=None, help="Start of the financial year in YYYY-MM-DD. If omitted, Jan 1 is used for each year")
+    parser.add_argument("--output-folder", default=os.path.realpath("."), help="Path to the output folder to place DATEV files in. Default: current folder")
+    parser.add_argument("--title", default=None, help="Title of the exported DATEV files")
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -137,4 +146,5 @@ if __name__ == '__main__':
                 datev_output_dir=args.output_folder,
                 title=args.title,
                 financial_year_start=parse_any_date(args.financial_year_start),
+                print_message_function=print,
             )

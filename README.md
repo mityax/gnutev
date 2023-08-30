@@ -6,7 +6,11 @@ Export GnuCash bookings to the german DATEV export format – such that they can
 GnuTev requires you to have Python >= 3.8 installed on your system. Apart from that,
 there's no extra dependencies.
 
-To use GnuTev, just clone the repository.
+To use GnuTev, just clone the repository:
+
+```
+$ git clone https://github.com/mityax/gnutev.git
+```
 
 ## Usage
 
@@ -78,6 +82,13 @@ repo to learn more about these objects and their usage.
 
 If you're using this as a library, I'd love if you let me know – I'm curious what uses 
 it offers to creative developers.
+
+## Platform support
+Since GnuTev is pure-python and only uses modules from the standard library, it should
+work just fine on all major operating systems (including Linux, MacOS and Windows).
+
+Note that On a Windows system you might have to use `python3.exe` in the commands
+described here accordingly.
 
 ## Contributing
 I'm open to any kind of contribution – just create an issue and/or a pull request. 

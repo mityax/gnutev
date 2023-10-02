@@ -23,7 +23,7 @@ open GnuCash and export your bookings and accounts via:
 Remember both filenames. Then, use GnuTev to convert your bookings:
 
 ```bash
-$ python3 gnutev/main .../Gnucash-Accounts-Export.csv .../GnuCash-Transactions-Export.csv
+$ python3 gnutev/main.py .../Gnucash-Accounts-Export.csv .../GnuCash-Transactions-Export.csv
 ```
 
 That's it. If everything worked, your output should look similar to this:

@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 
+import csv
+import datetime
 import logging
 import os.path
-import datetime
 import sys
 from itertools import groupby
-from typing import Iterable, List, Callable
+from typing import Iterable, List, Callable, TextIO
 
 import src.datev_file as dt
 import src.gnucash_file as gc
@@ -29,6 +30,7 @@ def convert_gnucash_to_datev(gnucash_accounts_export_fd: Iterable[str],
     end_date = end_date or max(d.date for d in bookings_file.rows)
 
     periods = list(yearly_split(end_date, start_date))
+    datev_files = []
 
     print_message_function(f"Converting transactions from {start_date} to {end_date} ({len(periods)} {'period' if len(periods) == 1 else 'periods'})…")
 
@@ -117,11 +119,41 @@ def convert_gnucash_to_datev(gnucash_accounts_export_fd: Iterable[str],
         with open(fn, "w+") as f:
             datev_file.to_csv(f)
 
+        datev_files.append(datev_file)
+
         print_message_function(
             f" - Wrote output file {current_period+1}/{len(periods)} ({start} to {end}) "
             f"containing {len(set(b.transaction_id for b in filtered_bookings))} bookings to \"{fn}\"")
 
-    print_message_function(f"{len(periods)} DATEV-compatible {'file' if len(periods) == 1 else 'files'} successfully created.")
+    print_message_function(f"{len(datev_files)} DATEV-compatible {'file' if len(datev_files) == 1 else 'files'} successfully created.")
+
+    return datev_files
+
+
+def ensure_correct_exports_order(accounts_fd: TextIO, bookings_fd: TextIO, print_warning: bool = True) -> tuple[TextIO, TextIO]:
+    """
+    Check if the files were given in the right order first, and swap them if necessary. The current
+    approach is to do this via CSV column counts (transaction file has much more columns than the
+    accounts file).
+
+    Returns the two file descriptors in the correct order (accounts_fd, bookings_fd)
+    """
+
+    r1 = csv.reader(accounts_fd)
+    r2 = csv.reader(bookings_fd)
+
+    if len(next(r1)) > len(next(r2)):
+        if print_warning:
+            print("Warning: The transaction files appear to be in the wrong order (transactions export was given "
+                  "first). They are being swapped now before continuing. To suppress this behavior, pass the "
+                  "'--no-check-exports-order' flag.")
+        accounts_fd, bookings_fd = bookings_fd, accounts_fd
+
+    # Seek back to the beginning of the files:
+    accounts_fd.seek(0)
+    bookings_fd.seek(0)
+
+    return accounts_fd, bookings_fd
 
 
 if __name__ == '__main__':
@@ -130,19 +162,29 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("accounts-csv-export", help="The path to the Account Tree CSV file exported from GnuCash")
-    parser.add_argument("transactions-csv-export", help="The path to the Transactions CSV file exported from GnuCash")
+    parser.add_argument("transactions-csv-export",
+                        help="The path to the Transactions CSV file exported from GnuCash")
 
-    parser.add_argument("--financial-year-start", default=None, help="Start of the financial year in YYYY-MM-DD. If omitted, Jan 1 is used for each year")
-    parser.add_argument("--output-folder", default=os.path.realpath("."), help="Path to the output folder to place DATEV files in. Default: current folder")
+    parser.add_argument("--financial-year-start", default=None,
+                        help="Start of the financial year in YYYY-MM-DD. If omitted, Jan 1 is used for each year")
+    parser.add_argument("--output-folder", default=os.path.realpath("."),
+                        help="Path to the output folder to place DATEV files in. Default: current folder")
     parser.add_argument("--title", default=None, help="Title of the exported DATEV files")
+
+    parser.add_argument("--no-check-exports-order", action='store_true',
+                        help="Do not check and correct the order in which input files are given. This flag is usually not needed.")
 
     args = parser.parse_args(sys.argv[1:])
 
-    with open(getattr(args, 'accounts-csv-export')) as accountsfd:
-        with open(getattr(args, 'transactions-csv-export')) as bookingsfd:
+    with open(getattr(args, 'accounts-csv-export')) as accounts_fd:
+        with open(getattr(args, 'transactions-csv-export')) as bookings_fd:
+            if not args.no_check_exports_order:
+                accounts_fd, bookings_fd = ensure_correct_exports_order(accounts_fd, bookings_fd)
+
+            # Run the conversion:
             convert_gnucash_to_datev(
-                gnucash_accounts_export_fd=accountsfd,
-                gnucash_bookings_export_fd=bookingsfd,
+                gnucash_accounts_export_fd=accounts_fd,
+                gnucash_bookings_export_fd=bookings_fd,
                 datev_output_dir=args.output_folder,
                 title=args.title,
                 financial_year_start=parse_any_date(args.financial_year_start),

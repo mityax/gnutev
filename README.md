@@ -1,5 +1,6 @@
 # GnuTev
-Export GnuCash bookings to the german DATEV export format – such that they can directly be imported into DATEV-compatible applications.
+Export GnuCash bookings to the german DATEV export format – such that they can directly be imported into 
+DATEV-compatible applications.
 
 ## Installation
 
@@ -12,7 +13,20 @@ To use GnuTev, just clone the repository:
 $ git clone https://github.com/mityax/gnutev.git
 ```
 
+### Optional: Add Nautilus Script
+
+If you're using the Nautilus file manager, you can enable GnuTev as a Nautilus script, 
+so you can invoke it easily through the context menu. To do so, just create a symlink using
+this command:
+
+```
+ln -s "$(pwd)/gnutev/nautilus_script.py" ~/.local/share/nautilus/scripts/GnuTev.py
+```
+
+
 ## Usage
+
+### Via the command line (CLI)
 
 GnuTev uses GnuCash CSV exports to construct the DATEV export file. Therefore, first
 open GnuCash and export your bookings and accounts via:
@@ -35,27 +49,34 @@ Converting transactions from 2022-05-05 to 2023-06-09 (2 periods)…
 2 DATEV-compatible files successfully created.
 ```
 
-### Further customization
+#### Further customization
 GnuTev offers some more arguments to customize your export. You can view it's usage
 using `python3 gnutev/main.py --help`:
 
 ```
-usage: gnucash/main.py [--financial-year-start FINANCIAL_YEAR_START] [--output-folder OUTPUT_FOLDER] [--title TITLE] accounts-csv-export transactions-csv-export
+usage: gnutev/main.py [-h] [--financial-year-start FINANCIAL_YEAR_START] [--output-folder OUTPUT_FOLDER] [--title TITLE] [--no-check-exports-order] accounts-csv-export transactions-csv-export
 
 positional arguments:
-  accounts-csv-export       The path to the Account Tree CSV file exported from GnuCash
-  transactions-csv-export   The path to the Transactions CSV file exported from GnuCash
+  accounts-csv-export   The path to the Account Tree CSV file exported from GnuCash
+  transactions-csv-export
+                        The path to the Transactions CSV file exported from GnuCash
 
 options:
-  -h, --help                Show this help message and exit
+  -h, --help            show this help message and exit
   --financial-year-start FINANCIAL_YEAR_START
-                            Start of the financial year in YYYY-MM-DD. If omitted, Jan 1 is
-                            used for each year
+                        Start of the financial year in YYYY-MM-DD. If omitted, Jan 1 is used for each year
   --output-folder OUTPUT_FOLDER
-                            Path to the output folder to place DATEV files in. Default: 
-                            current folder
-  --title TITLE             Title of the exported DATEV files
+                        Path to the output folder to place DATEV files in. Default: current folder
+  --title TITLE         Title of the exported DATEV files
+  --no-check-exports-order
+                        Do not check and correct the order in which input files are given. This flag is usually not needed.
 ```
+
+### Via Nautilus
+
+In Nautilus, just select the two CSV files exported from GnuCash and in the context
+menu select `Scripts` &rarr; `GnuTev.py`. The resulting DATEV files will be placed
+in the folder currently open in Nautilus.
 
 ## Using as a Python library
 GnuTev can directly be used as a Python library – you can just import it. When doing so,
